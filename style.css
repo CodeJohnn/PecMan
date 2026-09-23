@@ -1,0 +1,120 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background:
+        radial-gradient(circle at center, #101044 0%, #02020b 70%);
+
+    color: white;
+    font-family: Arial, sans-serif;
+
+    overflow: hidden;
+}
+
+.game-container {
+    width: min(95vw, 700px);
+    text-align: center;
+}
+
+h1 {
+    color: #ffff00;
+    font-size: clamp(28px, 6vw, 50px);
+
+    margin-bottom: 15px;
+
+    text-shadow:
+        0 0 5px #ffff00,
+        0 0 20px #ffff00;
+}
+
+.info {
+    display: flex;
+    justify-content: space-around;
+
+    margin-bottom: 12px;
+
+    font-size: 16px;
+}
+
+.info strong {
+    color: #00ff88;
+}
+
+canvas {
+    display: block;
+
+    width: 100%;
+    max-width: 600px;
+
+    margin: auto;
+
+    background: #000;
+
+    border: 3px solid #2222ff;
+
+    box-shadow:
+        0 0 10px #2222ff,
+        0 0 30px rgba(34, 34, 255, 0.4);
+}
+
+.message {
+    min-height: 30px;
+
+    margin-top: 12px;
+
+    color: #ffff00;
+
+    font-weight: bold;
+}
+
+.controls {
+    margin-top: 10px;
+
+    display: none;
+}
+
+.controls button {
+    width: 55px;
+    height: 45px;
+
+    margin: 3px;
+
+    border: 1px solid #4444ff;
+    border-radius: 8px;
+
+    background: #111133;
+    color: white;
+
+    font-size: 22px;
+}
+
+.controls button:active {
+    background: #2222aa;
+}
+
+.help {
+    margin-top: 10px;
+
+    color: #888;
+    font-size: 14px;
+}
+
+@media (max-width: 700px) {
+
+    .controls {
+        display: block;
+    }
+
+    body {
+        overflow-y: auto;
+    }
+}

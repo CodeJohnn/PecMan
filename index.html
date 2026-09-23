@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pac-Man - Arcade</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <main class="game-container">
+
+        <h1>🟡 PAC-MAN</h1>
+
+        <div class="info">
+            <span>Pontos: <strong id="score">0</strong></span>
+            <span>Fase: <strong id="level">1</strong></span>
+            <span>Vidas: <strong id="lives">3</strong></span>
+        </div>
+
+        <canvas id="game"></canvas>
+
+        <div id="message" class="message">
+            Pressione ENTER para começar
+        </div>
+
+        <div class="controls">
+            <button data-key="ArrowUp">▲</button>
+
+            <div>
+                <button data-key="ArrowLeft">◀</button>
+                <button data-key="ArrowDown">▼</button>
+                <button data-key="ArrowRight">▶</button>
+            </div>
+        </div>
+
+        <p class="help">
+            Use <strong>WASD</strong> ou as <strong>setas</strong>
+        </p>
+
+    </main>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
