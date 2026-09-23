@@ -6,7 +6,6 @@ const levelElement = document.getElementById("level");
 const livesElement = document.getElementById("lives");
 const messageElement = document.getElementById("message");
 
-
 // ============================================================
 // CONFIGURAÇÃO
 // ============================================================
@@ -45,7 +44,41 @@ canvas.height = ROWS * TILE;
 
 
 // ============================================================
-// ESTADO
+// DIREÇÕES
+// ============================================================
+
+const DIRECTIONS = {
+    up: {
+        x: 0,
+        y: -1
+    },
+
+    down: {
+        x: 0,
+        y: 1
+    },
+
+    left: {
+        x: -1,
+        y: 0
+    },
+
+    right: {
+        x: 1,
+        y: 0
+    }
+};
+
+const OPPOSITE = {
+    up: "down",
+    down: "up",
+    left: "right",
+    right: "left"
+};
+
+
+// ============================================================
+// ESTADO DO JOGO
 // ============================================================
 
 let score = 0;
@@ -56,20 +89,9 @@ let running = false;
 let gameOver = false;
 
 let pellets = [];
+let ghosts = [];
 
 let lastTime = 0;
-
-
-// ============================================================
-// DIREÇÕES
-// ============================================================
-
-const DIRECTIONS = {
-    up: { x: 0, y: -1 },
-    down: { x: 0, y: 1 },
-    left: { x: -1, y: 0 },
-    right: { x: 1, y: 0 }
-};
 
 
 // ============================================================
@@ -77,27 +99,20 @@ const DIRECTIONS = {
 // ============================================================
 
 const pacman = {
+
     x: 1.5 * TILE,
     y: 1.5 * TILE,
 
     direction: "right",
     nextDirection: "right",
 
-    speed: 90,
+    speed: 95,
 
-    radius: TILE * 0.42,
+    radius: TILE * 0.40,
 
     mouth: 0,
-
     mouthDirection: 1
 };
-
-
-// ============================================================
-// FANTASMAS
-// ============================================================
-
-let ghosts = [];
 
 
 // ============================================================
@@ -106,52 +121,16 @@ let ghosts = [];
 
 function isWallTile(x, y) {
 
-    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) {
+    if (
+        x < 0 ||
+        x >= COLS ||
+        y < 0 ||
+        y >= ROWS
+    ) {
         return true;
     }
 
     return MAP[y][x] === "#";
-}
-
-
-function isWallAtPixel(x, y) {
-
-    const left = Math.floor((x - pacman.radius) / TILE);
-    const right = Math.floor((x + pacman.radius) / TILE);
-
-    const top = Math.floor((y - pacman.radius) / TILE);
-    const bottom = Math.floor((y + pacman.radius) / TILE);
-
-    return (
-        isWallTile(left, top) ||
-        isWallTile(right, top) ||
-        isWallTile(left, bottom) ||
-        isWallTile(right, bottom)
-    );
-}
-
-
-function canMove(entity, direction, distance = 2) {
-
-    const dir = DIRECTIONS[direction];
-
-    const nextX = entity.x + dir.x * distance;
-    const nextY = entity.y + dir.y * distance;
-
-    const radius = entity.radius || 8;
-
-    const left = Math.floor((nextX - radius) / TILE);
-    const right = Math.floor((nextX + radius) / TILE);
-
-    const top = Math.floor((nextY - radius) / TILE);
-    const bottom = Math.floor((nextY + radius) / TILE);
-
-    return !(
-        isWallTile(left, top) ||
-        isWallTile(right, top) ||
-        isWallTile(left, bottom) ||
-        isWallTile(right, bottom)
-    );
 }
 
 
@@ -191,7 +170,11 @@ function resetPacman() {
     pacman.direction = "right";
     pacman.nextDirection = "right";
 
-    pacman.speed = 90;
+    pacman.speed =
+        Math.min(
+            145,
+            95 + (level - 1) * 7
+        );
 }
 
 
@@ -201,93 +184,256 @@ function resetPacman() {
 
 function createGhosts() {
 
-    const speed = 60 + level * 4;
+    const speed =
+        Math.min(
+            210,
+            95 + level * 18
+        );
 
     ghosts = [
 
         {
             x: 9.5 * TILE,
             y: 9.5 * TILE,
+
             direction: "left",
+
             color: "#ff3030",
-            speed
+
+            speed: speed
         },
 
         {
             x: 11.5 * TILE,
             y: 9.5 * TILE,
+
             direction: "right",
+
             color: "#00ffff",
-            speed: speed * 0.95
+
+            speed: speed * 1.02
         },
 
         {
             x: 10.5 * TILE,
             y: 10.5 * TILE,
+
             direction: "up",
+
             color: "#ff69b4",
-            speed: speed * 0.9
+
+            speed: speed * 1.05
         }
     ];
 }
 
 
 // ============================================================
-// MOVIMENTO SUAVE
+// MOVIMENTO DO PAC-MAN
 // ============================================================
+
+function canPacmanMove(direction, distance) {
+
+    const dir =
+        DIRECTIONS[direction];
+
+    const nextX =
+        pacman.x +
+        dir.x * distance;
+
+    const nextY =
+        pacman.y +
+        dir.y * distance;
+
+    const radius =
+        pacman.radius;
+
+
+    const left =
+        Math.floor(
+            (nextX - radius) / TILE
+        );
+
+    const right =
+        Math.floor(
+            (nextX + radius) / TILE
+        );
+
+    const top =
+        Math.floor(
+            (nextY - radius) / TILE
+        );
+
+    const bottom =
+        Math.floor(
+            (nextY + radius) / TILE
+        );
+
+
+    return !(
+        isWallTile(left, top) ||
+        isWallTile(right, top) ||
+        isWallTile(left, bottom) ||
+        isWallTile(right, bottom)
+    );
+}
+
 
 function updatePacman(delta) {
 
-    const distance = pacman.speed * delta;
+    const movement =
+        pacman.speed * delta;
+
 
     // Tenta mudar de direção
-    if (canMove(pacman, pacman.nextDirection, 2)) {
-        pacman.direction = pacman.nextDirection;
+
+    if (
+        canPacmanMove(
+            pacman.nextDirection,
+            2
+        )
+    ) {
+
+        pacman.direction =
+            pacman.nextDirection;
     }
 
-    // Anda
-    if (canMove(pacman, pacman.direction, distance)) {
 
-        const dir = DIRECTIONS[pacman.direction];
+    // Movimento atual
 
-        pacman.x += dir.x * distance;
-        pacman.y += dir.y * distance;
+    if (
+        canPacmanMove(
+            pacman.direction,
+            movement
+        )
+    ) {
+
+        const dir =
+            DIRECTIONS[pacman.direction];
+
+        pacman.x +=
+            dir.x * movement;
+
+        pacman.y +=
+            dir.y * movement;
     }
 
-    // Pequena animação da boca
+
+    // Animação da boca
+
     pacman.mouth +=
-        pacman.mouthDirection * delta * 10;
+        pacman.mouthDirection *
+        delta *
+        9;
 
     if (pacman.mouth >= 1) {
+
         pacman.mouth = 1;
         pacman.mouthDirection = -1;
     }
 
     if (pacman.mouth <= 0) {
+
         pacman.mouth = 0;
         pacman.mouthDirection = 1;
     }
+
 
     eatPellet();
 }
 
 
 // ============================================================
-// MOVIMENTO DOS FANTASMAS
+// POSIÇÃO DOS FANTASMAS
 // ============================================================
 
 function getGhostTile(ghost) {
 
     return {
-        x: Math.floor(ghost.x / TILE),
-        y: Math.floor(ghost.y / TILE)
+
+        x: Math.round(
+            (ghost.x - TILE / 2) / TILE
+        ),
+
+        y: Math.round(
+            (ghost.y - TILE / 2) / TILE
+        )
     };
 }
 
 
+function getPacmanTile() {
+
+    return {
+
+        x: Math.round(
+            (pacman.x - TILE / 2) / TILE
+        ),
+
+        y: Math.round(
+            (pacman.y - TILE / 2) / TILE
+        )
+    };
+}
+
+
+// ============================================================
+// DISTÂNCIA
+// ============================================================
+
+function getDistance(
+    x1,
+    y1,
+    x2,
+    y2
+) {
+
+    return Math.abs(x1 - x2) +
+           Math.abs(y1 - y2);
+}
+
+
+// ============================================================
+// DIREÇÕES POSSÍVEIS DO FANTASMA
+// ============================================================
+
+function isValidGhostDirection(
+    ghost,
+    direction
+) {
+
+    const tile =
+        getGhostTile(ghost);
+
+    const dir =
+        DIRECTIONS[direction];
+
+
+    const newX =
+        tile.x + dir.x;
+
+    const newY =
+        tile.y + dir.y;
+
+
+    return !isWallTile(
+        newX,
+        newY
+    );
+}
+
+
+// ============================================================
+// IA DOS FANTASMAS
+// ============================================================
+
 function chooseGhostDirection(ghost) {
 
-    const tile = getGhostTile(ghost);
+    const ghostTile =
+        getGhostTile(ghost);
+
+    const pacmanTile =
+        getPacmanTile();
 
     const directions = [
         "up",
@@ -296,160 +442,283 @@ function chooseGhostDirection(ghost) {
         "right"
     ];
 
-    const valid = directions.filter(direction => {
-
-        const d = DIRECTIONS[direction];
-
-        return !isWallTile(
-            tile.x + d.x,
-            tile.y + d.y
+    const possible =
+        directions.filter(
+            direction =>
+                !isWallTile(
+                    ghostTile.x +
+                    DIRECTIONS[direction].x,
+                    ghostTile.y +
+                    DIRECTIONS[direction].y
+                )
         );
-    });
 
-    if (valid.length === 0) {
+    if (possible.length === 0) {
         return;
     }
 
-    const opposite = {
-        up: "down",
-        down: "up",
-        left: "right",
-        right: "left"
-    };
+    const currentDirection =
+        ghost.direction;
 
-    let choices = valid.filter(
-        direction =>
-            direction !== opposite[ghost.direction]
-    );
+    const reverseDirection =
+        OPPOSITE[currentDirection];
 
-    if (choices.length === 0) {
-        choices = valid;
-    }
-
-    // IA simples de perseguição
-    choices.sort((a, b) => {
-
-        const da = getDistanceToPacman(
-            ghost,
-            a
+    const noReverse =
+        possible.filter(
+            direction =>
+                direction !==
+                reverseDirection
         );
 
-        const db = getDistanceToPacman(
-            ghost,
-            b
-        );
+    const choices =
+        (noReverse.length > 0
+            ? noReverse
+            : possible
+        )
+            .map(direction => {
 
-        return da - db;
-    });
+                const dir =
+                    DIRECTIONS[direction];
 
-    // Nem sempre escolhe a melhor direção.
-    // Isso deixa o fantasma menos previsível.
-    if (Math.random() < 0.2 && choices.length > 1) {
+                const nextX =
+                    ghostTile.x + dir.x;
+
+                const nextY =
+                    ghostTile.y + dir.y;
+
+                const distance =
+                    getDistance(
+                        nextX,
+                        nextY,
+                        pacmanTile.x,
+                        pacmanTile.y
+                    );
+
+                const straightBias =
+                    direction ===
+                    currentDirection
+                        ? -0.8
+                        : 0;
+
+                return {
+                    direction,
+                    distance:
+                        distance +
+                        straightBias
+                };
+            })
+            .sort(
+                (a, b) =>
+                    a.distance -
+                    b.distance
+            );
+
+    if (
+        currentDirection &&
+        possible.includes(
+            currentDirection
+        ) &&
+        choices.length > 1 &&
+        currentDirection !==
+        reverseDirection &&
+        choices[0].distance -
+        choices.find(
+            choice =>
+                choice.direction ===
+                currentDirection
+        )?.distance <= 1
+    ) {
         ghost.direction =
-            choices[
-                Math.floor(Math.random() * choices.length)
-            ];
-    } else {
-        ghost.direction = choices[0];
+            currentDirection;
+        return;
     }
+
+    ghost.direction =
+        choices[0].direction;
 }
 
 
-function getDistanceToPacman(ghost, direction) {
+// ============================================================
+// MOVIMENTO DOS FANTASMAS
+// ============================================================
 
-    const tile = getGhostTile(ghost);
+function updateGhost(
+    ghost,
+    delta
+) {
 
-    const d = DIRECTIONS[direction];
+    const tile =
+        getGhostTile(ghost);
 
-    const targetX =
-        tile.x + d.x;
-
-    const targetY =
-        tile.y + d.y;
-
-    const pacX =
-        Math.floor(pacman.x / TILE);
-
-    const pacY =
-        Math.floor(pacman.y / TILE);
-
-    return Math.abs(targetX - pacX) +
-           Math.abs(targetY - pacY);
-}
-
-
-function updateGhost(ghost, delta) {
-
-    const tileX =
-        Math.floor(ghost.x / TILE);
-
-    const tileY =
-        Math.floor(ghost.y / TILE);
 
     const centerX =
-        tileX * TILE + TILE / 2;
+        tile.x * TILE +
+        TILE / 2;
 
     const centerY =
-        tileY * TILE + TILE / 2;
+        tile.y * TILE +
+        TILE / 2;
 
-    // Quando chega perto do centro de uma célula,
-    // decide a próxima direção.
-    const nearCenter =
-        Math.abs(ghost.x - centerX) < 2 &&
-        Math.abs(ghost.y - centerY) < 2;
 
-    if (nearCenter) {
+    // Quando chega no centro
+    // de uma célula, recalcula a IA.
+
+    const distanceToCenter =
+        Math.hypot(
+            ghost.x - centerX,
+            ghost.y - centerY
+        );
+
+
+    if (distanceToCenter < 2) {
 
         ghost.x = centerX;
         ghost.y = centerY;
 
-        chooseGhostDirection(ghost);
+        const currentDirection =
+            ghost.direction;
+
+        const dir =
+            DIRECTIONS[currentDirection];
+
+        const forwardTile = {
+            x: tile.x + dir.x,
+            y: tile.y + dir.y
+        };
+
+        const canKeepGoing =
+            !isWallTile(
+                forwardTile.x,
+                forwardTile.y
+            );
+
+        const possibleTurns =
+            ["up", "down", "left", "right"]
+                .filter(direction =>
+                    direction !==
+                    OPPOSITE[currentDirection]
+                )
+                .filter(direction =>
+                    !isWallTile(
+                        tile.x + DIRECTIONS[direction].x,
+                        tile.y + DIRECTIONS[direction].y
+                    )
+                );
+
+        if (
+            !canKeepGoing ||
+            possibleTurns.length > 1
+        ) {
+            chooseGhostDirection(
+                ghost
+            );
+        }
     }
 
-    const d =
-        DIRECTIONS[ghost.direction];
 
-    const distance =
+    const direction =
+        DIRECTIONS[
+            ghost.direction
+        ];
+
+
+    const movement =
         ghost.speed * delta;
 
+
     const nextX =
-        ghost.x + d.x * distance;
+        ghost.x +
+        direction.x *
+        movement;
 
     const nextY =
-        ghost.y + d.y * distance;
+        ghost.y +
+        direction.y *
+        movement;
+
 
     const radius = 7;
 
+
     const left =
-        Math.floor((nextX - radius) / TILE);
+        Math.floor(
+            (nextX - radius) /
+            TILE
+        );
 
     const right =
-        Math.floor((nextX + radius) / TILE);
+        Math.floor(
+            (nextX + radius) /
+            TILE
+        );
 
     const top =
-        Math.floor((nextY - radius) / TILE);
+        Math.floor(
+            (nextY - radius) /
+            TILE
+        );
 
     const bottom =
-        Math.floor((nextY + radius) / TILE);
+        Math.floor(
+            (nextY + radius) /
+            TILE
+        );
 
-    if (
-        !isWallTile(left, top) &&
-        !isWallTile(right, top) &&
-        !isWallTile(left, bottom) &&
-        !isWallTile(right, bottom)
-    ) {
 
-        ghost.x = nextX;
-        ghost.y = nextY;
+    const blocked =
+
+        isWallTile(
+            left,
+            top
+        ) ||
+
+        isWallTile(
+            right,
+            top
+        ) ||
+
+        isWallTile(
+            left,
+            bottom
+        ) ||
+
+        isWallTile(
+            right,
+            bottom
+        );
+
+
+    if (!blocked) {
+
+        ghost.x =
+            nextX;
+
+        ghost.y =
+            nextY;
+
+    } else {
+
+        // Se bater na parede,
+        // procura outra direção.
+
+        chooseGhostDirection(
+            ghost
+        );
     }
 }
 
 
 function updateGhosts(delta) {
 
-    ghosts.forEach(ghost => {
-        updateGhost(ghost, delta);
-    });
+    for (
+        const ghost of ghosts
+    ) {
+
+        updateGhost(
+            ghost,
+            delta
+        );
+    }
 }
 
 
@@ -459,22 +728,38 @@ function updateGhosts(delta) {
 
 function eatPellet() {
 
-    for (let i = pellets.length - 1; i >= 0; i--) {
+    for (
+        let i = pellets.length - 1;
+        i >= 0;
+        i--
+    ) {
 
-        const pellet = pellets[i];
+        const pellet =
+            pellets[i];
+
 
         const dx =
-            pacman.x - pellet.x;
+            pacman.x -
+            pellet.x;
 
         const dy =
-            pacman.y - pellet.y;
+            pacman.y -
+            pellet.y;
+
 
         const distance =
-            Math.sqrt(dx * dx + dy * dy);
+            Math.hypot(
+                dx,
+                dy
+            );
+
 
         if (distance < 9) {
 
-            pellets.splice(i, 1);
+            pellets.splice(
+                i,
+                1
+            );
 
             score += 10;
 
@@ -484,7 +769,9 @@ function eatPellet() {
         }
     }
 
+
     if (pellets.length === 0) {
+
         nextLevel();
     }
 }
@@ -496,18 +783,30 @@ function eatPellet() {
 
 function checkGhostCollision() {
 
-    for (const ghost of ghosts) {
+    for (
+        const ghost of ghosts
+    ) {
 
         const dx =
-            pacman.x - ghost.x;
+            pacman.x -
+            ghost.x;
 
         const dy =
-            pacman.y - ghost.y;
+            pacman.y -
+            ghost.y;
+
 
         const distance =
-            Math.sqrt(dx * dx + dy * dy);
+            Math.hypot(
+                dx,
+                dy
+            );
 
-        if (distance < TILE * 0.65) {
+
+        if (
+            distance <
+            TILE * 0.58
+        ) {
 
             loseLife();
 
@@ -518,7 +817,7 @@ function checkGhostCollision() {
 
 
 // ============================================================
-// VIDA
+// PERDEU VIDA
 // ============================================================
 
 function loseLife() {
@@ -528,6 +827,7 @@ function loseLife() {
     updateUI();
 
     running = false;
+
 
     if (lives <= 0) {
 
@@ -539,15 +839,19 @@ function loseLife() {
         return;
     }
 
+
     messageElement.textContent =
-        `Você perdeu uma vida!`;
+        "Você perdeu uma vida!";
+
 
     setTimeout(() => {
 
         resetPacman();
+
         createGhosts();
 
-        messageElement.textContent = "";
+        messageElement.textContent =
+            "";
 
         running = true;
 
@@ -564,25 +868,25 @@ function nextLevel() {
     level++;
 
     resetPacman();
+
     createGhosts();
+
     createPellets();
 
-    // Pac-Man fica um pouco mais rápido
-    pacman.speed =
-        Math.min(
-            150,
-            90 + (level - 1) * 8
-        );
 
     messageElement.textContent =
         `FASE ${level}!`;
 
+
     updateUI();
+
 
     setTimeout(() => {
 
         if (!gameOver) {
-            messageElement.textContent = "";
+
+            messageElement.textContent =
+                "";
         }
 
     }, 1200);
@@ -596,6 +900,7 @@ function nextLevel() {
 function drawMap() {
 
     ctx.fillStyle = "#000";
+
     ctx.fillRect(
         0,
         0,
@@ -603,16 +908,33 @@ function drawMap() {
         canvas.height
     );
 
-    for (let y = 0; y < ROWS; y++) {
 
-        for (let x = 0; x < COLS; x++) {
+    for (
+        let y = 0;
+        y < ROWS;
+        y++
+    ) {
 
-            if (MAP[y][x] === "#") {
+        for (
+            let x = 0;
+            x < COLS;
+            x++
+        ) {
 
-                const px = x * TILE;
-                const py = y * TILE;
+            if (
+                MAP[y][x] === "#"
+            ) {
 
-                ctx.fillStyle = "#1111aa";
+                const px =
+                    x * TILE;
+
+                const py =
+                    y * TILE;
+
+
+                ctx.fillStyle =
+                    "#1111aa";
+
 
                 ctx.fillRect(
                     px,
@@ -621,9 +943,13 @@ function drawMap() {
                     TILE
                 );
 
-                ctx.strokeStyle = "#3434ff";
+
+                ctx.strokeStyle =
+                    "#3434ff";
+
 
                 ctx.lineWidth = 1;
+
 
                 ctx.strokeRect(
                     px + 2,
@@ -645,9 +971,13 @@ function drawPellets() {
 
     ctx.fillStyle = "#fff";
 
-    for (const pellet of pellets) {
+
+    for (
+        const pellet of pellets
+    ) {
 
         ctx.beginPath();
+
 
         ctx.arc(
             pellet.x,
@@ -656,6 +986,7 @@ function drawPellets() {
             0,
             Math.PI * 2
         );
+
 
         ctx.fill();
     }
@@ -670,51 +1001,89 @@ function drawPacman() {
 
     let rotation = 0;
 
-    if (pacman.direction === "right") {
+
+    if (
+        pacman.direction ===
+        "right"
+    ) {
         rotation = 0;
     }
 
-    if (pacman.direction === "down") {
-        rotation = Math.PI / 2;
+
+    if (
+        pacman.direction ===
+        "down"
+    ) {
+        rotation =
+            Math.PI / 2;
     }
 
-    if (pacman.direction === "left") {
-        rotation = Math.PI;
+
+    if (
+        pacman.direction ===
+        "left"
+    ) {
+        rotation =
+            Math.PI;
     }
 
-    if (pacman.direction === "up") {
-        rotation = -Math.PI / 2;
+
+    if (
+        pacman.direction ===
+        "up"
+    ) {
+        rotation =
+            -Math.PI / 2;
     }
+
 
     const mouthAngle =
-        0.15 + pacman.mouth * 0.3;
+        0.15 +
+        pacman.mouth * 0.30;
+
 
     ctx.save();
+
 
     ctx.translate(
         pacman.x,
         pacman.y
     );
 
-    ctx.rotate(rotation);
 
-    ctx.fillStyle = "#ffff00";
+    ctx.rotate(
+        rotation
+    );
+
+
+    ctx.fillStyle =
+        "#ffff00";
+
 
     ctx.beginPath();
 
-    ctx.moveTo(0, 0);
+
+    ctx.moveTo(
+        0,
+        0
+    );
+
 
     ctx.arc(
         0,
         0,
         pacman.radius,
         mouthAngle,
-        Math.PI * 2 - mouthAngle
+        Math.PI * 2 -
+        mouthAngle
     );
+
 
     ctx.closePath();
 
+
     ctx.fill();
+
 
     ctx.restore();
 }
@@ -729,44 +1098,55 @@ function drawGhost(ghost) {
     const x = ghost.x;
     const y = ghost.y;
 
-    const r = TILE * 0.42;
+    const radius =
+        TILE * 0.42;
 
-    ctx.fillStyle = ghost.color;
+
+    ctx.fillStyle =
+        ghost.color;
+
 
     ctx.beginPath();
+
 
     ctx.arc(
         x,
         y - 1,
-        r,
+        radius,
         Math.PI,
         0
     );
 
-    ctx.lineTo(
-        x + r,
-        y + r
-    );
 
     ctx.lineTo(
-        x + r * 0.5,
-        y + r * 0.65
+        x + radius,
+        y + radius
     );
+
+
+    ctx.lineTo(
+        x + radius * 0.5,
+        y + radius * 0.65
+    );
+
 
     ctx.lineTo(
         x,
-        y + r
+        y + radius
     );
 
-    ctx.lineTo(
-        x - r * 0.5,
-        y + r * 0.65
-    );
 
     ctx.lineTo(
-        x - r,
-        y + r
+        x - radius * 0.5,
+        y + radius * 0.65
     );
+
+
+    ctx.lineTo(
+        x - radius,
+        y + radius
+    );
+
 
     ctx.closePath();
 
@@ -775,9 +1155,12 @@ function drawGhost(ghost) {
 
     // Olhos
 
-    ctx.fillStyle = "#fff";
+    ctx.fillStyle =
+        "#fff";
+
 
     ctx.beginPath();
+
 
     ctx.arc(
         x - 6,
@@ -787,6 +1170,7 @@ function drawGhost(ghost) {
         Math.PI * 2
     );
 
+
     ctx.arc(
         x + 6,
         y - 3,
@@ -794,13 +1178,17 @@ function drawGhost(ghost) {
         0,
         Math.PI * 2
     );
+
 
     ctx.fill();
 
 
-    ctx.fillStyle = "#111";
+    ctx.fillStyle =
+        "#111";
+
 
     ctx.beginPath();
+
 
     ctx.arc(
         x - 6,
@@ -810,6 +1198,7 @@ function drawGhost(ghost) {
         Math.PI * 2
     );
 
+
     ctx.arc(
         x + 6,
         y - 3,
@@ -817,6 +1206,7 @@ function drawGhost(ghost) {
         0,
         Math.PI * 2
     );
+
 
     ctx.fill();
 }
@@ -824,7 +1214,14 @@ function drawGhost(ghost) {
 
 function drawGhosts() {
 
-    ghosts.forEach(drawGhost);
+    for (
+        const ghost of ghosts
+    ) {
+
+        drawGhost(
+            ghost
+        );
+    }
 }
 
 
@@ -851,30 +1248,51 @@ function render() {
 function gameLoop(timestamp) {
 
     if (!lastTime) {
-        lastTime = timestamp;
+
+        lastTime =
+            timestamp;
     }
 
-    // Delta em segundos
+
     let delta =
-        (timestamp - lastTime) / 1000;
+        (timestamp - lastTime) /
+        1000;
 
-    lastTime = timestamp;
 
-    // Evita um salto gigante se a aba ficar parada
-    delta = Math.min(delta, 0.05);
+    lastTime =
+        timestamp;
+
+
+    // Evita saltos se a aba
+    // ficar congelada.
+
+    delta =
+        Math.min(
+            delta,
+            0.05
+        );
+
 
     if (running) {
 
-        updatePacman(delta);
+        updatePacman(
+            delta
+        );
 
-        updateGhosts(delta);
+        updateGhosts(
+            delta
+        );
 
         checkGhostCollision();
     }
 
+
     render();
 
-    requestAnimationFrame(gameLoop);
+
+    requestAnimationFrame(
+        gameLoop
+    );
 }
 
 
@@ -882,71 +1300,92 @@ function gameLoop(timestamp) {
 // CONTROLES
 // ============================================================
 
-function setDirection(direction) {
+function setDirection(
+    direction
+) {
 
-    pacman.nextDirection = direction;
+    pacman.nextDirection =
+        direction;
 
-    if (!running && !gameOver) {
+
+    if (
+        !running &&
+        !gameOver
+    ) {
+
         startGame();
     }
 }
 
 
-document.addEventListener("keydown", event => {
+document.addEventListener(
+    "keydown",
+    event => {
 
-    const key =
-        event.key.toLowerCase();
+        const key =
+            event.key.toLowerCase();
 
-    if (
-        key === "arrowup" ||
-        key === "w"
-    ) {
 
-        event.preventDefault();
+        if (
+            key === "arrowup" ||
+            key === "w"
+        ) {
 
-        setDirection("up");
-    }
+            event.preventDefault();
 
-    if (
-        key === "arrowdown" ||
-        key === "s"
-    ) {
-
-        event.preventDefault();
-
-        setDirection("down");
-    }
-
-    if (
-        key === "arrowleft" ||
-        key === "a"
-    ) {
-
-        event.preventDefault();
-
-        setDirection("left");
-    }
-
-    if (
-        key === "arrowright" ||
-        key === "d"
-    ) {
-
-        event.preventDefault();
-
-        setDirection("right");
-    }
-
-    if (event.key === "Enter") {
-
-        if (gameOver) {
-            restartGame();
+            setDirection("up");
         }
-        else if (!running) {
-            startGame();
+
+
+        if (
+            key === "arrowdown" ||
+            key === "s"
+        ) {
+
+            event.preventDefault();
+
+            setDirection("down");
+        }
+
+
+        if (
+            key === "arrowleft" ||
+            key === "a"
+        ) {
+
+            event.preventDefault();
+
+            setDirection("left");
+        }
+
+
+        if (
+            key === "arrowright" ||
+            key === "d"
+        ) {
+
+            event.preventDefault();
+
+            setDirection("right");
+        }
+
+
+        if (
+            event.key ===
+            "Enter"
+        ) {
+
+            if (gameOver) {
+
+                restartGame();
+
+            } else if (!running) {
+
+                startGame();
+            }
         }
     }
-});
+);
 
 
 // ============================================================
@@ -954,7 +1393,9 @@ document.addEventListener("keydown", event => {
 // ============================================================
 
 document
-    .querySelectorAll("[data-key]")
+    .querySelectorAll(
+        "[data-key]"
+    )
     .forEach(button => {
 
         button.addEventListener(
@@ -963,23 +1404,52 @@ document
 
                 event.preventDefault();
 
+
                 const key =
                     button.dataset.key;
 
-                if (key === "ArrowUp") {
-                    setDirection("up");
+
+                if (
+                    key ===
+                    "ArrowUp"
+                ) {
+
+                    setDirection(
+                        "up"
+                    );
                 }
 
-                if (key === "ArrowDown") {
-                    setDirection("down");
+
+                if (
+                    key ===
+                    "ArrowDown"
+                ) {
+
+                    setDirection(
+                        "down"
+                    );
                 }
 
-                if (key === "ArrowLeft") {
-                    setDirection("left");
+
+                if (
+                    key ===
+                    "ArrowLeft"
+                ) {
+
+                    setDirection(
+                        "left"
+                    );
                 }
 
-                if (key === "ArrowRight") {
-                    setDirection("right");
+
+                if (
+                    key ===
+                    "ArrowRight"
+                ) {
+
+                    setDirection(
+                        "right"
+                    );
                 }
             }
         );
@@ -987,32 +1457,41 @@ document
 
 
 // ============================================================
-// JOGO
+// CONTROLE DO JOGO
 // ============================================================
 
 function startGame() {
 
     running = true;
 
-    messageElement.textContent = "";
+    messageElement.textContent =
+        "";
 }
 
 
 function restartGame() {
 
     score = 0;
+
     lives = 3;
+
     level = 1;
 
     gameOver = false;
 
+
     resetPacman();
+
     createGhosts();
+
     createPellets();
 
     updateUI();
 
-    messageElement.textContent = "";
+
+    messageElement.textContent =
+        "";
+
 
     running = true;
 }
@@ -1020,9 +1499,14 @@ function restartGame() {
 
 function updateUI() {
 
-    scoreElement.textContent = score;
-    levelElement.textContent = level;
-    livesElement.textContent = lives;
+    scoreElement.textContent =
+        score;
+
+    levelElement.textContent =
+        level;
+
+    livesElement.textContent =
+        lives;
 }
 
 
@@ -1031,9 +1515,13 @@ function updateUI() {
 // ============================================================
 
 resetPacman();
+
 createGhosts();
+
 createPellets();
 
 updateUI();
 
-requestAnimationFrame(gameLoop);
+requestAnimationFrame(
+    gameLoop
+);
