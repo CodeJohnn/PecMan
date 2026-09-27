@@ -18,6 +18,7 @@ body {
     font-family: Arial, sans-serif;
 
     overflow: hidden;
+    overscroll-behavior: none;
 }
 
 .game-container {
@@ -95,6 +96,12 @@ canvas {
     color: white;
 
     font-size: 22px;
+
+    /* Evita zoom por toque duplo, o "flash" de seleção ao tocar
+       e a seleção acidental de texto nos botões em telas de toque. */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .controls button:active {
